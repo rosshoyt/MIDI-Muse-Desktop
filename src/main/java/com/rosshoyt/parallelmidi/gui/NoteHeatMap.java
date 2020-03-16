@@ -3,26 +3,30 @@ package com.rosshoyt.parallelmidi.gui;
 import java.io.Serializable;
 import java.util.Arrays;
 
-public class HeatMap implements Serializable, Cloneable {
+public class NoteHeatMap implements Serializable, Cloneable {
 	private static final long serialVersionUID = -74910217358788424L;
-	private int dim = 20;
-	private double low, high;
-	private double[] cells;
+	/**
+	 * Defaults to 12. This way the frequency of
+	 * each musical pitch of the octave is tracked.
+	 */
+	private int dim;
+	private int low, high;
+	private int[] cells;
 
-	public HeatMap(int dim, double low, double high) {
+	public NoteHeatMap(int dim, int low, int high) {
 		this.dim = dim;
 		this.low = low;
 		this.high = high;
-		cells = new double[dim * dim];
+		cells = new int[dim];
 	}
 	
-	public HeatMap() {
-		this(20, -1.0, +1.0);
+	public NoteHeatMap() {
+		this(12, 0, 11);
 	}
 
-	public HeatMap(double x, double y) {
+	public NoteHeatMap(int pitch) {
 		this();
-		accum(x, y);
+		accum(pitch);
 	}
 	
 	public int getDim() {
@@ -36,7 +40,7 @@ public class HeatMap implements Serializable, Cloneable {
 	}
 	
 	public Object clone() {
-		HeatMap copy = new HeatMap(dim, low, high);
+		NoteHeatMap copy = new NoteHeatMap(dim, low, high);
 		for (int i = 0; i < cells.length; i++)
 			copy.cells[i] = cells[i];
 		return copy;
@@ -51,31 +55,31 @@ public class HeatMap implements Serializable, Cloneable {
 		return index;
 	}
 
-	private void incrCell(int r, int c) {
-		cells[r * dim + c]++;
+	private void incrCell(int r) {
+		cells[r % dim]++;
 	}
 
 	public double getCell(int r, int c) {
 		return cells[r * dim + c];
 	}
 	
-	public void setCell(int r, int c, double value) {
-		cells[r * dim + c] = value;
+	public void setCell(int r, int c, int value) {
+		cells[r % dim] = value;
 	}
 
-	public static HeatMap combine(HeatMap a, HeatMap b) {
-		HeatMap heatmap = new HeatMap(a.dim, a.low, a.high);
+	public static NoteHeatMap combine(NoteHeatMap a, NoteHeatMap b) {
+		NoteHeatMap heatmap = new NoteHeatMap(a.dim, a.low, a.high);
 		for (int i = 0; i < heatmap.cells.length; i++)
 			heatmap.cells[i] = a.cells[i] + b.cells[i];
 		return heatmap;
 	}
 
-	public HeatMap accum(double x, double y) {
-		incrCell(place(y), place(x));
+	public NoteHeatMap accum(int pitch) {
+		incrCell(pitch);
 		return this;
 	}
 	
-	public HeatMap addWeighted(HeatMap other, double weight) {
+	public NoteHeatMap addWeighted(NoteHeatMap other, double weight) {
 		for (int i = 0; i < cells.length; i++)
 			cells[i] += other.cells[i] * weight;
 		return this;

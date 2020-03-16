@@ -5,8 +5,7 @@ package com.rosshoyt.parallelmidi;
  * Winter Quarter 2020
  */
 
-import com.rosshoyt.parallelmidi.gui.ColoredGrid;
-import com.rosshoyt.parallelmidi.gui.HeatMap;
+import com.rosshoyt.parallelmidi.gui.NoteHeatMap;
 import com.rosshoyt.parallelmidi.tools.benchmarks.BenchmarkingTimer;
 import com.rosshoyt.parallelmidi.tools.file.FileUtils;
 import javafx.application.Application;
@@ -23,11 +22,13 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -81,8 +82,8 @@ public class Main extends Application {
    private static final String REPLAY = "Replay";
    private static Color[][] grid;
    private static double current;
-   private static HashMap<Double, HeatMap> heatmaps;
-   private static HashMap<Double, HeatMap> output;
+   private static HashMap<Double, NoteHeatMap> heatmaps;
+   private static HashMap<Double, NoteHeatMap> output;
 
 
    // The primary component which holds all others.
@@ -194,47 +195,38 @@ public class Main extends Application {
 
 
 
-   private static List<File> getSelectedFiles(){
-      ObservableList selectedItems = midiFilesList.getSelectionModel().getSelectedItems();
-      List<File> selectedFiles = new ArrayList<>();
-      for(Object o: selectedItems) selectedFiles.add((File)o);
-      return selectedFiles;
-   }
    private static void startNoteScan() {
-      List<File> selectedFiles = getSelectedFiles();
-      if(selectedFiles.size() > 0) {
-         noteScanStatusLabel.setText(TEXT_SPACER + "...scanning");
+      try {
+         List<Sequence> selectedMidiFiles = getMidiSequencesFromSelectedFiles();
+         if (selectedMidiFiles.size() > 0) {
+            noteScanStatusLabel.setText(TEXT_SPACER + "...scanning");
 
-         // TODO map/reduce
-         try{
-            sequentialNoteScan(selectedFiles);
-         }catch(Exception e){
+            sequentialNoteScan(selectedMidiFiles);
 
-         }
-         noteScanStatusLabel.setText(TEXT_SPACER + "Scan Complete!");
-      } else
-         noteScanStatusLabel.setText(TEXT_SPACER + "Select one or more files to do the note heatmap scan");
+            noteScanStatusLabel.setText(TEXT_SPACER + "Scan Complete!");
+         } else
+            noteScanStatusLabel.setText(TEXT_SPACER + "Select one or more files to do the note heatmap scan");
+      } catch (Exception e) {
+         e.printStackTrace();
+         noteScanStatusLabel.setText(TEXT_SPACER + e.getMessage());
+         //return false;
+      }
 
    }
-
-   private static boolean sequentialNoteScan(List<File> selectedFiles) {
-      List<Sequence> midiFiles = new ArrayList<>();
-
-      for (File f : selectedFiles) {
-         try {
-            midiFiles.add(MidiSystem.getSequence(f));
-         } catch (Exception e) {
-            e.printStackTrace();
-            noteScanStatusLabel.setText(TEXT_SPACER + e.getMessage());
-            return false;
-         }
-
-      }
+   private static boolean sequentialNoteScan(List<Sequence> selectedFiles) {
+      //List<Sequence> midiFiles = new ArrayList<>();
 
       return true;
    }
 
-
+   private static List<Sequence> getMidiSequencesFromSelectedFiles() throws InvalidMidiDataException, IOException {
+      ObservableList selectedItems = midiFilesList.getSelectionModel().getSelectedItems();
+      List<Sequence> selectedFiles = new ArrayList<>();
+      for(Object o: selectedItems) {
+         selectedFiles.add(MidiSystem.getSequence((File)o));
+      }
+      return selectedFiles;
+   }
 
    private static void readInMidiFilesFromCurrentlySelectedDirectory() {
       System.out.println("Scanning Directory.");
@@ -281,7 +273,7 @@ public class Main extends Application {
    }
 
    private static void fillGrid(Color[][] grid) {
-      HeatMap display = output.get(current);
+      NoteHeatMap display = output.get(current);
       if(display != null){
          for (int r = 0; r < grid.length; r++)
             for (int c = 0; c < grid[r].length; c++)
