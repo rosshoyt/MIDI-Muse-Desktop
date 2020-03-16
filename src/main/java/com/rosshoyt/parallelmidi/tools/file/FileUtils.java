@@ -43,6 +43,43 @@ public class FileUtils {
       return SUPPORTED_FILE_EXTENSIONS.contains(extension);
    }
 
+   /**
+    * TODO Could change to truncate to a set text length, varying n directories to show based on closest dir
+    * TODO also make sure works on Windows
+    * @param path
+    * @param nDirectoriesToShow
+    * @return a truncated verison of the path that is easily readable
+    */
+   public static String getTruncatedPathForDisplay(File path, int nDirectoriesToShow){
+      String absPath = path.getAbsolutePath();
+      if(absPath.contains("/")) {
+         StringBuilder sb = new StringBuilder(absPath);
+         sb.reverse();
+         int count = 0, currIndex = 0;
+         // TODO move currIndex bounds checking to top of while loop
+         while (currIndex != -1 && count < nDirectoriesToShow) {
+            System.out.println("CUrr index = " + currIndex);
+            if(currIndex < sb.length() - 1)
+               currIndex = sb.indexOf("/", currIndex + 1);
+            if(currIndex != -1) ++count;
+         }
+
+         if(currIndex < sb.length() - 1)
+            sb.replace(currIndex + 1, sb.length() , "..");
+
+         return sb.reverse().toString();
+//         int count = 0, currIndex = 0;
+//         while (currIndex != -1 && count <= nDirectoriesToShow) {
+//            currIndex = absPath.indexOf("/", currIndex);
+//            ++count;
+//         }
+
+
+      } else // shouldn't reach this else
+         return absPath;
+
+   }
+
 
    public static byte[] getByteArray(File file) throws IOException {
       InputStream targetStream = new FileInputStream(file);
