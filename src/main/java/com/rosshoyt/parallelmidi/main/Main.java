@@ -8,11 +8,9 @@ package com.rosshoyt.parallelmidi.main;
 import com.rosshoyt.parallelmidi.tools.benchmarks.BenchmarkingTimer;
 import com.rosshoyt.parallelmidi.tools.file.FileUtils;
 import javafx.application.Application;
+import javafx.collections.ObservableList;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -20,9 +18,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 
-import javax.swing.*;
 import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,12 +26,11 @@ import java.util.List;
 public class Main extends Application {
    // Display constants
    private static final int DIM = 20;
-   private static final int HBOX_PADDING = 10;
+   private static final int PADDING_HORIZ_PX = 20;
+   private static final int PADDING_VERT_PX = 10;
 
-   // application components
-   private static JButton button;
-
-
+   /* Application GUI components (in top - down window location order) */
+   // Directory selection components
    private static Label currentDirectorylabel = new Label();
    private static boolean directoryHasBeenScanned = true;
    private static DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -43,12 +38,21 @@ public class Main extends Application {
    private static Button scanDirectoryButton = new Button("Scan Dir for Midi Files!");
    private static HBox directorySelectionComponent;
 
-
-   private static Label midiFileListLabel = new Label("Midi Files");
+   // Midi File List
+   private static Label midiFileListLabel = new Label("Midi Files " +
+         "                                         " +
+         "Use ⌘ (Mac) or Ctrl (Windows), or ⇧, to select multiple");
    private static ListView midiFilesList = new ListView();
 
+   //private static Button selectFileButton = new Button("Add File");
+   // TODO Create a Selected Midi File List (instead of, or in addition to, the setSelectionMode() control)
    private static Label selectedMidiFileListLabel = new Label("Selected Midi Files");
    private static ListView selectedMidiFilesList = new ListView();
+
+
+   private static Button startNoteScanButton = new Button("Start Heatscan of Selected File(s)");
+   private static Label noteScanStatusLabel = new Label();
+   private static HBox noteScanComponent;
 
    // container for the top half of the application (non - heatmap display portion)
    private static VBox midiFilesComponent;
@@ -70,6 +74,7 @@ public class Main extends Application {
       // init and configure behavior of the top 'directory chooser' component
       setCurrentDirectory(filesDirectory);
       directoryChooser.setInitialDirectory(filesDirectory);
+
       directoryChooserButton.setOnAction(e -> {
          File selectedDirectory = directoryChooser.showDialog(primaryStage);
          if(selectedDirectory != null){
@@ -81,6 +86,7 @@ public class Main extends Application {
             System.out.println("User didn't select a directory...");
          }
       });
+
       scanDirectoryButton.setOnAction(e -> {
          if(!directoryHasBeenScanned) {
             readInMidiFilesFromCurrentlySelectedDirectory();
@@ -88,9 +94,7 @@ public class Main extends Application {
          else
             System.out.println("Directory was already scanned.");
       });
-
-
-      directorySelectionComponent = new HBox(HBOX_PADDING, currentDirectorylabel, directoryChooserButton, scanDirectoryButton);
+      directorySelectionComponent = new HBox(PADDING_HORIZ_PX, currentDirectorylabel, directoryChooserButton, scanDirectoryButton);
       // set resize behavior
       directorySelectionComponent.setHgrow(currentDirectorylabel, Priority.SOMETIMES);
       directorySelectionComponent.setHgrow(directoryChooserButton, Priority.ALWAYS);
@@ -105,18 +109,24 @@ public class Main extends Application {
             setText(file == null ? null : file.getName());
          }
       });
+      midiFilesList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-      midiFilesComponent = new VBox(midiFileListLabel, midiFilesList);
+      // set the note scan button/label (row just above heatmap display)
+      startNoteScanButton.setOnAction(e ->{
+
+         startNoteScan();
+
+      });
+      noteScanComponent = new HBox(PADDING_HORIZ_PX, startNoteScanButton, noteScanStatusLabel);
 
 
-      midiFilesComponent = new VBox(directorySelectionComponent, midiFilesComponent);
+      // Container for all top components above heatmap display
+      midiFilesComponent = new VBox(PADDING_VERT_PX, directorySelectionComponent, midiFilesList, noteScanComponent);
 
 
       // setup algorithms
       // 1. read in the default midi files
       readInMidiFilesFromCurrentlySelectedDirectory();
-
-
 
       //fillGrid(grid);
       //animate();
@@ -128,9 +138,31 @@ public class Main extends Application {
       primaryStage.show();
    }
 
-   private static void clearAllFileLists() {
+   private static void startNoteScan() {
+
+      ObservableList selectedItems = midiFilesList.getSelectionModel().getSelectedItems();
+
+      List<File> selectedFiles = new ArrayList<>();
+      if(selectedItems.size() > 0) {
+         noteScanStatusLabel.setText("             ...scanning");
+         // cast objects to files
+         for(Object o: selectedItems) selectedFiles.add((File)o);
+
+         // TODO map/reduce
+         try{
+
+         }catch(Exception e){
+
+         }
+         noteScanStatusLabel.setText("             Scan Complete!");
+      } else
+         noteScanStatusLabel.setText("             Select one or more files to do the note heatmap scan");
 
    }
+
+//   private static void clearAllFileLists() {
+//
+//   }
 
    private static void readInMidiFilesFromCurrentlySelectedDirectory() {
       System.out.println("Scanning Directory.");
