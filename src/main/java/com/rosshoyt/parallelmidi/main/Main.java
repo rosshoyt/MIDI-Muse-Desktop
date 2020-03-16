@@ -1,4 +1,9 @@
 package com.rosshoyt.parallelmidi.main;
+/**
+ * Author: Ross Hoyt
+ * CPSC 5600
+ * Winter Quarter 2020
+ */
 
 import com.rosshoyt.parallelmidi.tools.benchmarks.BenchmarkingTimer;
 import com.rosshoyt.parallelmidi.tools.file.FileUtils;
@@ -47,9 +52,6 @@ public class Main extends Application {
 
    // container for the top half of the application (non - heatmap display portion)
    private static VBox midiFilesComponent;
-
-
-
 
    // file and directory related fields
    private static final String DEFAULT_DIRECTORY = "/midi-files";

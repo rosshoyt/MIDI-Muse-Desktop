@@ -1,4 +1,9 @@
 package com.rosshoyt.parallelmidi.tools.file;
+/**
+ * Author: Ross Hoyt
+ * CPSC 5600
+ * Winter Quarter 2020
+ */
 
 import com.google.common.io.Files;
 import org.apache.commons.io.FilenameUtils;
@@ -63,21 +68,12 @@ public class FileUtils {
                currIndex = sb.indexOf("/", currIndex + 1);
             if(currIndex != -1) ++count;
          }
-
          if(currIndex < sb.length() - 1)
             sb.replace(currIndex + 1, sb.length() , "..");
 
          return sb.reverse().toString();
-//         int count = 0, currIndex = 0;
-//         while (currIndex != -1 && count <= nDirectoriesToShow) {
-//            currIndex = absPath.indexOf("/", currIndex);
-//            ++count;
-//         }
-
-
       } else // shouldn't reach this else
          return absPath;
-
    }
 
 
@@ -96,10 +92,9 @@ public class FileUtils {
 
 
    public static class DirectoryScanner {
-      //private Path root;
+
       private static Set<String> extensionsToFind;
       private static ArrayList<File> targetFiles;
-      //private static Set<String> MIDI_FILE_EXTENSION;
 
       // TODO consolidate various constructors
 
@@ -108,25 +103,6 @@ public class FileUtils {
          this.extensionsToFind = SUPPORTED_FILE_EXTENSIONS; // TODO remove duplicate field
          targetFiles = new ArrayList<>();
       }
-
-//      public DirectoryScanner(String root, String extension) {
-//         this.root = Paths.get(root);
-//         extensionsToFind = new HashSet<>();
-//         extensionsToFind.add(extension);
-//         targetFiles = new ArrayList<>();
-//      }
-//
-//      public DirectoryScanner(String root, String[] extensions) {
-//         this.root = Paths.get(root);
-//         extensionsToFind = new HashSet<>(Arrays.asList(extensions));
-//         targetFiles = new ArrayList<>();
-//      }
-//
-//      public DirectoryScanner(String root, Set<String> extensionsToFind) {
-//         this.root = Paths.get(root);
-//         this.extensionsToFind = extensionsToFind;
-//         targetFiles = new ArrayList<>();
-//      }
 
       public List<File> getFiles(String root) {
          return getMidiFileResources(Paths.get(root));

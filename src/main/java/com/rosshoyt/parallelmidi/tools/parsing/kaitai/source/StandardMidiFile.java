@@ -1,4 +1,4 @@
-package com.rosshoyt.parallelmidi.tools.kaitai;
+package com.rosshoyt.parallelmidi.tools.parsing.kaitai.source;
 
 // This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 

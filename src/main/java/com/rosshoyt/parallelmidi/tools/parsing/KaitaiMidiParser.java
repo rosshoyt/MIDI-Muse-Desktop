@@ -1,10 +1,15 @@
-package com.rosshoyt.parallelmidi.tools.kaitai;
+package com.rosshoyt.parallelmidi.tools.parsing;
+/**
+ * Author: Ross Hoyt
+ * CPSC 5600
+ * Winter Quarter 2020
+ */
 
 import com.rosshoyt.parallelmidi.tools.exceptions.UnexpectedMidiDataException;
+import com.rosshoyt.parallelmidi.tools.parsing.kaitai.source.StandardMidiFile;
 import io.kaitai.struct.ByteBufferKaitaiStream;
 import io.kaitai.struct.KaitaiStream;
 
-import java.io.File;
 
 public class KaitaiMidiParser {
 
