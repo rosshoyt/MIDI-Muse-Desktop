@@ -12,4 +12,9 @@ public class NoteObservation implements Serializable {
     * Midi Pitches are between 0-127
     */
    public int noteNumber;
+
+   public NoteObservation(int noteNumber, long tick) {
+      this.noteNumber = noteNumber;
+      this.tickOn = tick;
+   }
 }

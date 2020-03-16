@@ -6,8 +6,11 @@ package com.rosshoyt.parallelmidi;
  */
 
 import com.rosshoyt.parallelmidi.gui.NoteHeatMap;
+import com.rosshoyt.parallelmidi.scan.MusicScan;
+import com.rosshoyt.parallelmidi.scan.NoteObservation;
 import com.rosshoyt.parallelmidi.tools.benchmarks.BenchmarkingTimer;
 import com.rosshoyt.parallelmidi.tools.file.FileUtils;
+import com.sun.media.sound.MidiUtils;
 import javafx.application.Application;
 import javafx.collections.ObservableList;
 import javafx.embed.swing.SwingNode;
@@ -22,15 +25,12 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiSystem;
-import javax.sound.midi.Sequence;
+import javax.sound.midi.*;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
 
 
@@ -88,6 +88,13 @@ public class Main extends Application {
 
    // The primary component which holds all others.
    private static VBox mainComponent;
+
+
+   // Scan related fields
+   private static final String SCAN_PAR = "Scan in Parallel", SCAN_SEQ = "Scan sequentially";
+   private static Button parallelScanButton = new Button(SCAN_PAR);
+
+   private boolean parallelScan = true;
 
 
 
@@ -150,7 +157,7 @@ public class Main extends Application {
       // set the note scan button/label (row just above heatmap display)
       startNoteScanButton.setOnAction(e ->{
 
-         startNoteScan();
+         startNoteScan(parallelScan ? true : false);
 
       });
       noteScanComponent = new HBox(PADDING_HORIZ_PX, startNoteScanButton, noteScanStatusLabel);
@@ -172,8 +179,13 @@ public class Main extends Application {
 //         }
 //      });
 
+      parallelScanButton.setOnAction(e -> {
+         parallelScan = !parallelScan;
+         parallelScanButton.setText(parallelScan ? SCAN_PAR : SCAN_SEQ);
+      });
+
       // Container for all components
-      mainComponent = new VBox(PADDING_VERT_PX, midiFilesComponent, startButton, swingNode);
+      mainComponent = new VBox(PADDING_VERT_PX, midiFilesComponent, parallelScanButton);
 
 
       //grid = new Color[DIM][DIM];
@@ -195,27 +207,74 @@ public class Main extends Application {
 
 
 
-   private static void startNoteScan() {
+   private static void startNoteScan(boolean parallel) {
       try {
+         // first convert the selected files into midi files
          List<Sequence> selectedMidiFiles = getMidiSequencesFromSelectedFiles();
          if (selectedMidiFiles.size() > 0) {
+            noteScanStatusLabel.setText(TEXT_SPACER + "...preparing MIDI files");
+
+            List<NoteObservation> notes = getMidiNoteList(selectedMidiFiles);
+
             noteScanStatusLabel.setText(TEXT_SPACER + "...scanning");
 
-            sequentialNoteScan(selectedMidiFiles);
 
-            noteScanStatusLabel.setText(TEXT_SPACER + "Scan Complete!");
+            BenchmarkingTimer.startTimer();
+            if(parallel){
+               parallelNoteScan(notes);
+            } else {
+               sequentialNoteScan(notes);
+            }
+            long time = BenchmarkingTimer.stopTimer();
+            noteScanStatusLabel.setText(TEXT_SPACER + "Scan Complete! Took " + time + " ms");
          } else
             noteScanStatusLabel.setText(TEXT_SPACER + "Select one or more files to do the note heatmap scan");
       } catch (Exception e) {
          e.printStackTrace();
          noteScanStatusLabel.setText(TEXT_SPACER + e.getMessage());
-         //return false;
       }
 
    }
-   private static boolean sequentialNoteScan(List<Sequence> selectedFiles) {
-      //List<Sequence> midiFiles = new ArrayList<>();
 
+   private static List<NoteObservation> getMidiNoteList(List<Sequence> selectedMidiFiles) {
+      Hashtable<Long, NoteObservation> notes = new Hashtable<>();
+      for (Sequence seq : selectedMidiFiles) {
+         for (Track track : seq.getTracks()) {
+            //System.out.println("Starting parse of Track # " + trackNumber + ". " + track.size() + " events in track");
+            //ShortMessageHandler smHandler = new ShortMessageHandler(this.sequence, trackNumber);
+            //MetaMessageHandler mmHandler = new MetaMessageHandler(this.sequence);
+            for (int i = 0; i < track.size(); i++) {
+               MidiEvent midiEvent = track.get(i);
+
+               long eventTick = midiEvent.getTick();
+               MidiMessage midiMessage = midiEvent.getMessage();
+
+               if (midiMessage instanceof ShortMessage) {
+                  ShortMessage sm = (ShortMessage) midiMessage;
+                  if (sm.getCommand() == ShortMessage.NOTE_ON)
+                     // TODO Need to convert tick to realTime for timestamp ordering to be
+                     //  totally accurate, although only a problem when using multiple sequences
+                     notes.put(midiEvent.getTick(), new NoteObservation(sm.getData1(), midiEvent.getTick()));
+               }
+            }
+         }
+      }
+      return new ArrayList<NoteObservation>(notes.values());
+   }
+
+
+   private static void parallelNoteScan(List<NoteObservation> notes) {
+      MusicScan scan = new MusicScan(notes);
+      scan.getReduction();
+
+   }
+
+   private static boolean sequentialNoteScan(List<NoteObservation> notes) {
+      //List<Sequence> midiFiles = new ArrayList<>();
+      NoteHeatMap noteHeatMap = new NoteHeatMap();
+      for(NoteObservation note : notes){
+         noteHeatMap.accum(note.noteNumber);
+      }
       return true;
    }
 
