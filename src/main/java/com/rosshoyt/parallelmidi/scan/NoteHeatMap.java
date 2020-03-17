@@ -1,4 +1,4 @@
-package com.rosshoyt.parallelmidi.gui;
+package com.rosshoyt.parallelmidi.scan;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -59,11 +59,11 @@ public class NoteHeatMap implements Serializable, Cloneable {
 		cells[r % dim]++;
 	}
 
-	public double getCell(int r, int c) {
-		return cells[r * dim + c];
+	public int getCell(int r) {
+		return cells[r];
 	}
 	
-	public void setCell(int r, int c, int value) {
+	public void setCell(int r, int value) {
 		cells[r % dim] = value;
 	}
 

@@ -1,8 +1,5 @@
 package com.rosshoyt.parallelmidi.scan;
 
-import com.rosshoyt.parallelmidi.gui.NoteHeatMap;
-
-import java.util.HashMap;
 import java.util.List;
 
 public class MusicScan extends GeneralScan3<NoteObservation, NoteHeatMap> {

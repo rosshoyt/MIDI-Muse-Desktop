@@ -5,12 +5,12 @@ package com.rosshoyt.parallelmidi;
  * Winter Quarter 2020
  */
 
-import com.rosshoyt.parallelmidi.gui.NoteHeatMap;
+import com.rosshoyt.parallelmidi.scan.NoteHeatMap;
 import com.rosshoyt.parallelmidi.scan.MusicScan;
 import com.rosshoyt.parallelmidi.scan.NoteObservation;
 import com.rosshoyt.parallelmidi.tools.benchmarks.BenchmarkingTimer;
+import com.rosshoyt.parallelmidi.tools.data.PitchResults;
 import com.rosshoyt.parallelmidi.tools.file.FileUtils;
-import com.sun.media.sound.MidiUtils;
 import javafx.application.Application;
 import javafx.collections.ObservableList;
 import javafx.embed.swing.SwingNode;
@@ -18,6 +18,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -85,6 +86,10 @@ public class Main extends Application {
    private static HashMap<Double, NoteHeatMap> heatmaps;
    private static HashMap<Double, NoteHeatMap> output;
 
+   // Midi file reduction constants
+   private static TableView resultsTable = new TableView();
+   // used to display the results
+   private static final String[] NOTE_NAMES = { "C", "Db", "D","Eb","E","F","Gb","G","Ab","A","Bb","B"};
 
    // The primary component which holds all others.
    private static VBox mainComponent;
@@ -92,9 +97,8 @@ public class Main extends Application {
 
    // Scan related fields
    private static final String SCAN_PAR = "Scan in Parallel", SCAN_SEQ = "Scan sequentially";
-   private static Button parallelScanButton = new Button(SCAN_PAR);
-
-   private boolean parallelScan = true;
+   private static Button parallelScanButton = new Button(SCAN_SEQ);
+   private boolean parallelScan = false;
 
 
 
@@ -169,23 +173,22 @@ public class Main extends Application {
 
       // Setup heatmap display
       createAndSetSwingContent(swingNode);
-//      startButton.setOnAction(e -> {
-//         try {
-//            startButton.setDisable(true);
-//            //animate();
-//            startButton.setDisable(false);
-//         }catch(InterruptedException ie) {
-//            ie.printStackTrace();
-//         }
-//      });
 
       parallelScanButton.setOnAction(e -> {
          parallelScan = !parallelScan;
          parallelScanButton.setText(parallelScan ? SCAN_PAR : SCAN_SEQ);
       });
 
+
+      //for(int i = 0; i < 12; i++) {
+         TableColumn<String, Integer> column = new TableColumn<>("Pitch Frequencies (C, C#, D, D#, E, F, F#, G, G#, A, A#, and B)");
+         column.setCellValueFactory(new PropertyValueFactory<>("pitchOccurences"));
+         column.setMinWidth(450.0);
+         resultsTable.getColumns().add(column);
+      //}
+
       // Container for all components
-      mainComponent = new VBox(PADDING_VERT_PX, midiFilesComponent, parallelScanButton);
+      mainComponent = new VBox(PADDING_VERT_PX, midiFilesComponent, parallelScanButton, resultsTable);
 
 
       //grid = new Color[DIM][DIM];
@@ -209,6 +212,7 @@ public class Main extends Application {
 
    private static void startNoteScan(boolean parallel) {
       try {
+         resultsTable.getItems().clear();
          // first convert the selected files into midi files
          List<Sequence> selectedMidiFiles = getMidiSequencesFromSelectedFiles();
          if (selectedMidiFiles.size() > 0) {
@@ -218,15 +222,17 @@ public class Main extends Application {
 
             noteScanStatusLabel.setText(TEXT_SPACER + "...scanning");
 
+            NoteHeatMap reduction;
 
             BenchmarkingTimer.startTimer();
             if(parallel){
-               parallelNoteScan(notes);
+               reduction = parallelNoteScan(notes);
             } else {
-               sequentialNoteScan(notes);
+               reduction = sequentialNoteScan(notes);
             }
             long time = BenchmarkingTimer.stopTimer();
             noteScanStatusLabel.setText(TEXT_SPACER + "Scan Complete! Took " + time + " ms");
+            setResultsTable(reduction);
          } else
             noteScanStatusLabel.setText(TEXT_SPACER + "Select one or more files to do the note heatmap scan");
       } catch (Exception e) {
@@ -234,6 +240,11 @@ public class Main extends Application {
          noteScanStatusLabel.setText(TEXT_SPACER + e.getMessage());
       }
 
+   }
+
+   private static void setResultsTable(NoteHeatMap reduction) {
+      for(int i = 0; i < 12; i++)
+         resultsTable.getItems().add(new PitchResults(NOTE_NAMES[i],reduction.getCell(i)));
    }
 
    private static List<NoteObservation> getMidiNoteList(List<Sequence> selectedMidiFiles) {
@@ -263,19 +274,19 @@ public class Main extends Application {
    }
 
 
-   private static void parallelNoteScan(List<NoteObservation> notes) {
+   private static NoteHeatMap parallelNoteScan(List<NoteObservation> notes) {
       MusicScan scan = new MusicScan(notes);
-      scan.getReduction();
+      return scan.getReduction();
 
    }
 
-   private static boolean sequentialNoteScan(List<NoteObservation> notes) {
+   private static NoteHeatMap sequentialNoteScan(List<NoteObservation> notes) {
       //List<Sequence> midiFiles = new ArrayList<>();
       NoteHeatMap noteHeatMap = new NoteHeatMap();
       for(NoteObservation note : notes){
          noteHeatMap.accum(note.noteNumber);
       }
-      return true;
+      return noteHeatMap;
    }
 
    private static List<Sequence> getMidiSequencesFromSelectedFiles() throws InvalidMidiDataException, IOException {
@@ -335,8 +346,8 @@ public class Main extends Application {
       NoteHeatMap display = output.get(current);
       if(display != null){
          for (int r = 0; r < grid.length; r++)
-            for (int c = 0; c < grid[r].length; c++)
-               grid[r][c] = interpolateColor(display.getCell(r, c) / HOT_CALIB, COLD, HOT);
+            for (int c = 0; c < grid[r].length; c++);
+               //grid[r][c] = interpolateColor(display.getCell(r, c) / HOT_CALIB, COLD, HOT);
       }
    }
    private static Color interpolateColor(double ratio, Color a, Color b) {
