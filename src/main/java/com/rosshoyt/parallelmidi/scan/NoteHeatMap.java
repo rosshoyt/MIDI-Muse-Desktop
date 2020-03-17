@@ -38,14 +38,12 @@ public class NoteHeatMap implements Serializable, Cloneable {
 	public double getHigh() {
 		return high;
 	}
-	
 	public Object clone() {
 		NoteHeatMap copy = new NoteHeatMap(dim, low, high);
 		for (int i = 0; i < cells.length; i++)
 			copy.cells[i] = cells[i];
 		return copy;
 	}
-
 	private int place(double where) {
 		int index = (int) ((where - low) / ((high - low) / dim));
 		if (index < 0)
@@ -59,10 +57,12 @@ public class NoteHeatMap implements Serializable, Cloneable {
 		cells[r % dim]++;
 	}
 
+	public int[] getCells() { return cells; }
+
 	public int getCell(int r) {
 		return cells[r];
 	}
-	
+
 	public void setCell(int r, int value) {
 		cells[r % dim] = value;
 	}
@@ -78,7 +78,7 @@ public class NoteHeatMap implements Serializable, Cloneable {
 		incrCell(pitch);
 		return this;
 	}
-	
+
 	public NoteHeatMap addWeighted(NoteHeatMap other, double weight) {
 		for (int i = 0; i < cells.length; i++)
 			cells[i] += other.cells[i] * weight;

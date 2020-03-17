@@ -9,8 +9,9 @@ import com.rosshoyt.parallelmidi.scan.NoteHeatMap;
 import com.rosshoyt.parallelmidi.scan.MusicScan;
 import com.rosshoyt.parallelmidi.scan.NoteObservation;
 import com.rosshoyt.parallelmidi.tools.benchmarks.BenchmarkingTimer;
-import com.rosshoyt.parallelmidi.tools.data.PitchResults;
+import com.rosshoyt.parallelmidi.gui.PitchResults;
 import com.rosshoyt.parallelmidi.tools.file.FileUtils;
+import com.rosshoyt.parallelmidi.tools.music.MusicUtils;
 import javafx.application.Application;
 import javafx.collections.ObservableList;
 import javafx.embed.swing.SwingNode;
@@ -24,6 +25,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+
 
 
 import javax.sound.midi.*;
@@ -76,7 +78,6 @@ public class Main extends Application {
    // the Swing Heatmap component from HW 5/6
    private static final SwingNode swingNode = new SwingNode();
    private static Button startButton = new Button("Start");
-
    private static final int SLEEP_INTERVAL = 50; // milliseconds
    private static final Color COLD = new Color(0x0a, 0x37, 0x66), HOT = Color.RED;
    private static final double HOT_CALIB = 1.0;
@@ -88,8 +89,8 @@ public class Main extends Application {
 
    // Midi file reduction constants
    private static TableView resultsTable = new TableView();
-   // used to display the results
-   private static final String[] NOTE_NAMES = { "C", "Db", "D","Eb","E","F","Gb","G","Ab","A","Bb","B"};
+
+
 
    // The primary component which holds all others.
    private static VBox mainComponent;
@@ -98,6 +99,11 @@ public class Main extends Application {
    // Scan related fields
    private static final String SCAN_PAR = "Scan in Parallel", SCAN_SEQ = "Scan sequentially";
    private static Button parallelScanButton = new Button(SCAN_SEQ);
+
+   /**
+    * Flag for when user wants to execute the reduce/scan with parallel or sequential algorithms
+    * True = parallel, false = sequential
+    */
    private boolean parallelScan = false;
 
 
@@ -147,7 +153,7 @@ public class Main extends Application {
       directorySelectionComponent.setHgrow(directoryChooserButton, Priority.ALWAYS);
       directorySelectionComponent.setHgrow(scanDirectoryButton, Priority.ALWAYS);
 
-      // Set file list to only display file name, not full path
+      // Set midi filelist to only display file name, not full path
       // source: https://stackoverflow.com/questions/35834606/showing-a-list-of-only-filenames-while-having-full-file-paths-connected
       midiFilesList.setCellFactory(lv -> new ListCell<File>() {
          @Override
@@ -156,12 +162,13 @@ public class Main extends Application {
             setText(file == null ? null : file.getName());
          }
       });
+      // allow multiple files to be selected at once
       midiFilesList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
       // set the note scan button/label (row just above heatmap display)
       startNoteScanButton.setOnAction(e ->{
 
-         startNoteScan(parallelScan ? true : false);
+         startNoteScan(parallelScan);
 
       });
       noteScanComponent = new HBox(PADDING_HORIZ_PX, startNoteScanButton, noteScanStatusLabel);
@@ -180,12 +187,16 @@ public class Main extends Application {
       });
 
 
-      //for(int i = 0; i < 12; i++) {
-         TableColumn<String, Integer> column = new TableColumn<>("Pitch Frequencies (C, C#, D, D#, E, F, F#, G, G#, A, A#, and B)");
-         column.setCellValueFactory(new PropertyValueFactory<>("pitchOccurences"));
-         column.setMinWidth(450.0);
+      for(int i = 0; i < 12; i++) {
+         TableColumn<String, Integer> column = new TableColumn<>(
+               MusicUtils.getNoteFromMIDINoteNumber(i, MusicUtils.AccidentalType.FLAT)
+               + "/" + MusicUtils.getNoteFromMIDINoteNumber(i, MusicUtils.AccidentalType.SHARP)
+         );
+         column.setCellValueFactory(new PropertyValueFactory<>(PitchResults.PITCH_STR_KEY + i));
+               //TableViewUtils.createArrayValueFactory((Function<String, Integer>)PitchResults::getPitchOccurences, i));//new PropertyValueFactory<>("note" + i));
+         //column.setMinWidth(40);
          resultsTable.getColumns().add(column);
-      //}
+      }
 
       // Container for all components
       mainComponent = new VBox(PADDING_VERT_PX, midiFilesComponent, parallelScanButton, resultsTable);
@@ -243,8 +254,10 @@ public class Main extends Application {
    }
 
    private static void setResultsTable(NoteHeatMap reduction) {
-      for(int i = 0; i < 12; i++)
-         resultsTable.getItems().add(new PitchResults(NOTE_NAMES[i],reduction.getCell(i)));
+      resultsTable.getItems().add(new PitchResults(reduction.getCells()));
+      //      for(int i = 0; i < 12; i++)
+//         resultsTable.getItems().add(
+//               new PitchResults(MusicUtils.getNoteFromMIDINoteNumber(i), reduction.getCell(i)));
    }
 
    private static List<NoteObservation> getMidiNoteList(List<Sequence> selectedMidiFiles) {
