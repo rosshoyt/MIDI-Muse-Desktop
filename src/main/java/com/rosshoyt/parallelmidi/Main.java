@@ -38,33 +38,42 @@ import java.util.List;
 
 
 public class Main extends Application {
-   // File and directory related fields
-   private static final String DEFAULT_DIRECTORY = "/midi-files";
-   private static File filesDirectory;
-   private static List<File> midiFiles;
 
-   // Display constants
+
+   private static List<File> midiFiles = new ArrayList<>();
+
+   // Window Component Size constants
    private static final int DIM = 20;
    private static final int PADDING_HORIZ_PX = 20;
-   private static final int PADDING_VERT_PX = 10;
-   private static final String TEXT_SPACER = "             ";
+   private static final int PADDING_VERT_PX  = 10;
+   // GUI Message/Label Constants
+   private static final String MODE                 = "MODE: ";
+   private static final String TEXT_SPACER          = "      ";
+   private static final String PARALLEL             = "PARALLEL";
+   private static final String SEQUENTIAL           = "SEQUENTIAL";
+   private static final String MUSIC_SCAN_MODE_PAR  = MODE + PARALLEL;
+   private static final String MUSIC_SCAN_MODE_SEQ  = MODE + SEQUENTIAL;
+   private static final String FILE_SEARCH_MODE_PAR = MODE + PARALLEL;
+   private static final String FILE_SEARCH_MODE_SEQ = MODE + SEQUENTIAL;
 
-   // Application GUI components (in top - down window location order)
+
+   /* Application GUI components (in top - down window location order) */
    // Directory selection components
-   private static Label currentDirectorylabel = new Label();
+   private static File filesDirectory;
+   private static final String DEFAULT_MIDI_DIR = "/midi-files";
+   private static Label selectedDirectoryLabel = new Label(); // shows the current directory that will be scanned
    private static boolean directoryHasBeenScanned = true;
+   private static Button selectDirectoryButton = new Button("[Select Directory]");
    private static DirectoryChooser directoryChooser = new DirectoryChooser();
-   private static Button directoryChooserButton = new Button("Select Directory");
-   private static Button scanDirectoryButton = new Button("Scan Dir for Midi Files!");
+   private static Button startFileSearchButton = new Button("Start Search for MIDI Files");
+   private static Button fileSearchModeButton = new Button(FILE_SEARCH_MODE_PAR);
    private static HBox directorySelectionComponent;
 
    // Midi File List
-   private static Label midiFileListLabel = new Label("Midi Files " +
-         "                                         " +
-         "Use ⌘ (Mac) or Ctrl (Windows), or ⇧, to select multiple");
+   private static Label midiFileListLabel = new Label("MIDI Files Found: " +
+         TEXT_SPACER + TEXT_SPACER +
+         "[Use ⌘ (Mac) or Ctrl (Windows), or hold ⇧, to select multiple]");
    private static ListView midiFilesList = new ListView();
-   //private static Label selectedMidiFileListLabel = new Label("Selected Midi Files");
-   //private static ListView selectedMidiFilesList = new ListView();
 
    // Reduce/Scan related GUI components
    private static Button startNoteScanButton = new Button("Start Heatscan of Selected File(s)");
@@ -74,31 +83,17 @@ public class Main extends Application {
    // Container for the top half of the application (non - heatmap display portion)
    private static VBox midiFilesComponent;
 
-   // Heatmap GUI related fields
-   // the Swing Heatmap component from HW 5/6
-   private static final SwingNode swingNode = new SwingNode();
-   private static Button startButton = new Button("Start");
-   private static final int SLEEP_INTERVAL = 50; // milliseconds
-   private static final Color COLD = new Color(0x0a, 0x37, 0x66), HOT = Color.RED;
-   private static final double HOT_CALIB = 1.0;
-   private static final String REPLAY = "Replay";
-   private static Color[][] grid;
-   private static double current;
-   private static HashMap<Double, NoteHeatMap> heatmaps;
-   private static HashMap<Double, NoteHeatMap> output;
 
    // Midi file reduction constants
    private static TableView resultsTable = new TableView();
 
 
+   // Music Scan related fields
+   private static Button musicScanModeButton = new Button(MUSIC_SCAN_MODE_SEQ);
 
    // The primary component which holds all others.
    private static VBox mainComponent;
 
-
-   // Scan related fields
-   private static final String SCAN_PAR = "Scan in Parallel", SCAN_SEQ = "Scan sequentially";
-   private static Button parallelScanButton = new Button(SCAN_SEQ);
 
    /**
     * Flag for when user wants to execute the reduce/scan with parallel or sequential algorithms
@@ -120,15 +115,13 @@ public class Main extends Application {
 
    @Override
    public void start(Stage primaryStage) {
-      // initialize fields and application window components
-      filesDirectory = new File(FileUtils.getCurrentWorkingDirectory().concat(DEFAULT_DIRECTORY));
-      midiFiles = new ArrayList<>();
+      filesDirectory = new File(FileUtils.getCurrentWorkingDirectory().concat(DEFAULT_MIDI_DIR));
 
-      // init and configure behavior of the top 'directory chooser' component
+      // init and configure behavior of the 'directory chooser' component
       setCurrentDirectory(filesDirectory);
       directoryChooser.setInitialDirectory(filesDirectory);
 
-      directoryChooserButton.setOnAction(e -> {
+      selectDirectoryButton.setOnAction(e -> {
          File selectedDirectory = directoryChooser.showDialog(primaryStage);
          if(selectedDirectory != null){
             //clearAllFileLists();
@@ -140,18 +133,24 @@ public class Main extends Application {
          }
       });
 
-      scanDirectoryButton.setOnAction(e -> {
+      startFileSearchButton.setOnAction(e -> {
          if(!directoryHasBeenScanned) {
             readInMidiFilesFromCurrentlySelectedDirectory();
          }
          else
             System.out.println("Directory was already scanned.");
       });
-      directorySelectionComponent = new HBox(PADDING_HORIZ_PX, currentDirectorylabel, directoryChooserButton, scanDirectoryButton);
+
+      fileSearchModeButton.setOnAction(e->{
+         fileSearchModeButton.setText(
+               fileSearchModeButton.getText().equals(FILE_SEARCH_MODE_PAR) ? FILE_SEARCH_MODE_SEQ : FILE_SEARCH_MODE_PAR
+         );
+      });
+      directorySelectionComponent = new HBox(PADDING_HORIZ_PX, selectDirectoryButton, fileSearchModeButton, startFileSearchButton);
       // set resize behavior
-      directorySelectionComponent.setHgrow(currentDirectorylabel, Priority.SOMETIMES);
-      directorySelectionComponent.setHgrow(directoryChooserButton, Priority.ALWAYS);
-      directorySelectionComponent.setHgrow(scanDirectoryButton, Priority.ALWAYS);
+      directorySelectionComponent.setHgrow(selectedDirectoryLabel, Priority.SOMETIMES);
+      directorySelectionComponent.setHgrow(selectDirectoryButton, Priority.ALWAYS);
+      directorySelectionComponent.setHgrow(startFileSearchButton, Priority.ALWAYS);
 
       // Set midi filelist to only display file name, not full path
       // source: https://stackoverflow.com/questions/35834606/showing-a-list-of-only-filenames-while-having-full-file-paths-connected
@@ -167,24 +166,25 @@ public class Main extends Application {
 
       // set the note scan button/label (row just above heatmap display)
       startNoteScanButton.setOnAction(e ->{
-
-         startNoteScan(parallelScan);
-
+         startNoteScan(musicScanModeButton.getText().equals(MUSIC_SCAN_MODE_PAR));
       });
-      noteScanComponent = new HBox(PADDING_HORIZ_PX, startNoteScanButton, noteScanStatusLabel);
+      noteScanComponent = new HBox(PADDING_HORIZ_PX * 2, startNoteScanButton, musicScanModeButton, noteScanStatusLabel);
 
+      musicScanModeButton.setOnAction(e -> {
+         //parallelScan = !parallelScan;
+         musicScanModeButton.setText(
+               musicScanModeButton.getText().equals(MUSIC_SCAN_MODE_PAR) ? MUSIC_SCAN_MODE_SEQ : MUSIC_SCAN_MODE_PAR
+         );
+      });
 
       // Container for all top components above heatmap display
-      midiFilesComponent = new VBox(PADDING_VERT_PX, directorySelectionComponent, midiFilesList, noteScanComponent);
+      midiFilesComponent = new VBox(PADDING_VERT_PX, directorySelectionComponent, selectedDirectoryLabel, midiFileListLabel, midiFilesList, noteScanComponent);
 
 
       // Setup heatmap display
-      createAndSetSwingContent(swingNode);
+      //createAndSetSwingContent(swingNode);
 
-      parallelScanButton.setOnAction(e -> {
-         parallelScan = !parallelScan;
-         parallelScanButton.setText(parallelScan ? SCAN_PAR : SCAN_SEQ);
-      });
+
 
 
       for(int i = 0; i < 12; i++) {
@@ -199,7 +199,7 @@ public class Main extends Application {
       }
 
       // Container for all components
-      mainComponent = new VBox(PADDING_VERT_PX, midiFilesComponent, parallelScanButton, resultsTable);
+      mainComponent = new VBox(PADDING_VERT_PX, midiFilesComponent, resultsTable);
 
 
       //grid = new Color[DIM][DIM];
@@ -218,6 +218,7 @@ public class Main extends Application {
       primaryStage.show();
 
    }
+
 
 
 
@@ -321,7 +322,7 @@ public class Main extends Application {
 
    private static void setCurrentDirectory(File path){
       filesDirectory = path;
-      currentDirectorylabel.setText(FileUtils.getTruncatedPathForDisplay(filesDirectory, 3));
+      selectedDirectoryLabel.setText("CURRENT DIR: " + FileUtils.getTruncatedPathForDisplay(filesDirectory, 5));
       System.out.println("Directory to scan is set to: " + filesDirectory.getAbsolutePath());
    }
 
@@ -373,4 +374,17 @@ public class Main extends Application {
       int cz = az + (int) ((b.getBlue() - az) * ratio);
       return new Color(cx, cy, cz);
    }
+   // TODO delete
+   // Heatmap GUI related fields
+   // the Swing Heatmap component from HW 5/6
+   private static final SwingNode swingNode = new SwingNode();
+   private static Button startButton = new Button("Start");
+   private static final int SLEEP_INTERVAL = 50; // milliseconds
+   private static final Color COLD = new Color(0x0a, 0x37, 0x66), HOT = Color.RED;
+   private static final double HOT_CALIB = 1.0;
+   private static final String REPLAY = "Replay";
+   private static Color[][] grid;
+   private static double current;
+   private static HashMap<Double, NoteHeatMap> heatmaps;
+   private static HashMap<Double, NoteHeatMap> output;
 }
