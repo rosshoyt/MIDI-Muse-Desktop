@@ -92,26 +92,14 @@ public class Main extends Application {
    // Container for the top half of the application (non - heatmap display portion)
    private static VBox midiFilesComponent;
 
-
    // Midi file reduction constants
    private static TableView resultsTable = new TableView();
-
 
    // Music Scan related fields
    private static Button musicScanModeButton = new Button(MUSIC_SCAN_MODE_SEQ);
 
    // The primary component which holds all others.
    private static VBox mainComponent;
-
-
-   /**
-    * Flag for when user wants to execute the reduce/scan with parallel or sequential algorithms
-    * True = parallel, false = sequential
-    */
-   private boolean parallelScan = false;
-
-
-
 
    /**
     * Launches the JavaFX application
@@ -191,7 +179,7 @@ public class Main extends Application {
             midiFileListLabel, midiFilesList, noteScanComponent);
 
 
-      // Setup heatmap display
+      // Setup heatmap display TODO delete swing heatmap stuff
       //createAndSetSwingContent(swingNode);
 
 
@@ -203,8 +191,6 @@ public class Main extends Application {
                + "/" + MusicUtils.getNoteFromMIDINoteNumber(i, MusicUtils.AccidentalType.SHARP)
          );
          column.setCellValueFactory(new PropertyValueFactory<>(PitchResults.PITCH_STR_KEY + i));
-               //TableViewUtils.createArrayValueFactory((Function<String, Integer>)PitchResults::getPitchOccurences, i));//new PropertyValueFactory<>("note" + i));
-         //column.setMinWidth(40);
          resultsTable.getColumns().add(column);
       }
 
@@ -228,8 +214,6 @@ public class Main extends Application {
       primaryStage.show();
 
    }
-
-
 
 
    private static void startNoteScan(boolean parallel) {
@@ -266,18 +250,13 @@ public class Main extends Application {
 
    private static void setResultsTable(NoteHeatMap reduction) {
       resultsTable.getItems().add(new PitchResults(reduction.getCells()));
-      //      for(int i = 0; i < 12; i++)
-//         resultsTable.getItems().add(
-//               new PitchResults(MusicUtils.getNoteFromMIDINoteNumber(i), reduction.getCell(i)));
+
    }
 
    private static List<NoteObservation> getMidiNoteList(List<Sequence> selectedMidiFiles) {
       Hashtable<Long, NoteObservation> notes = new Hashtable<>();
       for (Sequence seq : selectedMidiFiles) {
          for (Track track : seq.getTracks()) {
-            //System.out.println("Starting parse of Track # " + trackNumber + ". " + track.size() + " events in track");
-            //ShortMessageHandler smHandler = new ShortMessageHandler(this.sequence, trackNumber);
-            //MetaMessageHandler mmHandler = new MetaMessageHandler(this.sequence);
             for (int i = 0; i < track.size(); i++) {
                MidiEvent midiEvent = track.get(i);
 
@@ -351,11 +330,6 @@ public class Main extends Application {
       System.out.println("Directory to scan is set to: " + filesDirectory.getAbsolutePath());
    }
 
-//   private static void searchForMidiFiles(){
-//
-//      midiFiles.addAll(
-//            fileSearcher.getFilesSequentially(filesDirectory.getAbsolutePath()));
-//   }
 
    private static boolean addMidiFilesToFileList(){
       return midiFilesList.getItems().addAll(midiFiles);
@@ -400,7 +374,9 @@ public class Main extends Application {
       int cz = az + (int) ((b.getBlue() - az) * ratio);
       return new Color(cx, cy, cz);
    }
-   // TODO delete
+
+
+   // TODO delete / cleanup fields related to heatmap display (Could not port Swing animation thread to JavaFX)
    // Heatmap GUI related fields
    // the Swing Heatmap component from HW 5/6
    private static final SwingNode swingNode = new SwingNode();
