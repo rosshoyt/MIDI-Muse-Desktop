@@ -72,7 +72,7 @@ public class Main extends Application {
    private static final String DEFAULT_MIDI_REL_DIR = "/midi-files";
    private static Label selectedDirectoryLabel = new Label(); // shows the current directory that will be searched
    private static boolean directoryHasBeenScanned = true;
-   private static Button selectDirectoryButton = new Button("[Select Directory]");
+   private static Button selectDirectoryButton = new Button("[Select New Directory]");
    private static DirectoryChooser directoryChooser = new DirectoryChooser();
    private static Button startFileSearchButton = new Button("Start Search for MIDI Files");
    private static Button fileSearchModeButton = new Button(FILE_SEARCH_MODE_PAR);
@@ -143,7 +143,7 @@ public class Main extends Application {
 
       startFileSearchButton.setOnAction(e -> {
          if(!directoryHasBeenScanned) {
-            readInMidiFilesFromCurrentlySelectedDirectory();
+            searchCurrentlySelectedDirectory(fileSearchModeButton.getText().equals(FILE_SEARCH_MODE_PAR));
          }
          else
             System.out.println("Directory was already scanned.");
@@ -154,8 +154,9 @@ public class Main extends Application {
                fileSearchModeButton.getText().equals(FILE_SEARCH_MODE_PAR) ? FILE_SEARCH_MODE_SEQ : FILE_SEARCH_MODE_PAR
          );
       });
+      // container for directory selection components
       directorySelectionComponent = new HBox(PADDING_HORIZ_PX, selectDirectoryButton, fileSearchModeButton, startFileSearchButton);
-      // set resize behavior
+      // set resize behavior TODO fix
       directorySelectionComponent.setHgrow(selectedDirectoryLabel, Priority.SOMETIMES);
       directorySelectionComponent.setHgrow(selectDirectoryButton, Priority.ALWAYS);
       directorySelectionComponent.setHgrow(startFileSearchButton, Priority.ALWAYS);
@@ -186,7 +187,8 @@ public class Main extends Application {
       });
 
       // Container for all top components above heatmap display
-      midiFilesComponent = new VBox(PADDING_VERT_PX, directorySelectionComponent, selectedDirectoryLabel, midiFileListLabel, midiFilesList, noteScanComponent);
+      midiFilesComponent = new VBox(PADDING_VERT_PX, selectedDirectoryLabel, directorySelectionComponent,
+            midiFileListLabel, midiFilesList, noteScanComponent);
 
 
       // Setup heatmap display
@@ -214,8 +216,8 @@ public class Main extends Application {
       //fillGrid(grid);
       //ColoredGrid gridPanel = new ColoredGrid(grid);
 
-      // Read in the midi files from default location
-      readInMidiFilesFromCurrentlySelectedDirectory();
+      // Read in the midi files from default location sequentially
+      searchCurrentlySelectedDirectory(true);
 
       //animate();
 
@@ -329,12 +331,12 @@ public class Main extends Application {
       return selectedFiles;
    }
 
-   private static void readInMidiFilesFromCurrentlySelectedDirectory() {
+   private static void searchCurrentlySelectedDirectory(boolean parallel) {
       String fullPath = filesDirectory.getAbsolutePath();
       System.out.println("Scanning Current Selected Directory [" + fullPath + "");
 
       BenchmarkingTimer.startTimer();
-      if(fileSearchModeButton.getText().equals(FILE_SEARCH_MODE_PAR))
+      if(parallel)
          midiFiles = fileSearcher.getFilesInParallel(fullPath);
       else
          midiFiles = fileSearcher.getFilesSequentially(fullPath);
