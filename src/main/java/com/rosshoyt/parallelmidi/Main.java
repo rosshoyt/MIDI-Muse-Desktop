@@ -10,6 +10,7 @@ import com.rosshoyt.parallelmidi.scan.MusicScan;
 import com.rosshoyt.parallelmidi.scan.NoteObservation;
 import com.rosshoyt.parallelmidi.tools.benchmarks.BenchmarkingTimer;
 import com.rosshoyt.parallelmidi.gui.PitchResults;
+import com.rosshoyt.parallelmidi.tools.file.FileSearcher;
 import com.rosshoyt.parallelmidi.tools.file.FileUtils;
 import com.rosshoyt.parallelmidi.tools.music.MusicUtils;
 import javafx.application.Application;
@@ -36,11 +37,20 @@ import java.io.IOException;
 import java.util.*;
 import java.util.List;
 
-
+/**
+ * Main application entry point.
+ * Starts the JavaFX application and executes program logic
+ */
 public class Main extends Application {
 
-
+   // List of the MIDI files used by the Application
    private static List<File> midiFiles = new ArrayList<>();
+
+
+   //The extensions of different Standard Midi Format files (.mid is most common)
+   private static final String[] FILE_EXTENSIONS = {"mid", "smf"};
+   // Class which implements the file searching logic
+   private static FileSearcher fileSearcher = new FileSearcher(FILE_EXTENSIONS);
 
    // Window Component Size constants
    private static final int DIM = 20;
@@ -56,12 +66,11 @@ public class Main extends Application {
    private static final String FILE_SEARCH_MODE_PAR = MODE + PARALLEL;
    private static final String FILE_SEARCH_MODE_SEQ = MODE + SEQUENTIAL;
 
-
    /* Application GUI components (in top - down window location order) */
    // Directory selection components
    private static File filesDirectory;
-   private static final String DEFAULT_MIDI_DIR = "/midi-files";
-   private static Label selectedDirectoryLabel = new Label(); // shows the current directory that will be scanned
+   private static final String DEFAULT_MIDI_REL_DIR = "/midi-files";
+   private static Label selectedDirectoryLabel = new Label(); // shows the current directory that will be searched
    private static boolean directoryHasBeenScanned = true;
    private static Button selectDirectoryButton = new Button("[Select Directory]");
    private static DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -70,9 +79,9 @@ public class Main extends Application {
    private static HBox directorySelectionComponent;
 
    // Midi File List
-   private static Label midiFileListLabel = new Label("MIDI Files Found: " +
-         TEXT_SPACER + TEXT_SPACER +
-         "[Use ⌘ (Mac) or Ctrl (Windows), or hold ⇧, to select multiple]");
+   private static Label midiFileListLabel = new Label(
+         "MIDI Files: " + TEXT_SPACER + TEXT_SPACER +
+               "[Use ⌘ (Mac) or Ctrl (Windows), or hold ⇧, to select multiple]");
    private static ListView midiFilesList = new ListView();
 
    // Reduce/Scan related GUI components
@@ -115,9 +124,8 @@ public class Main extends Application {
 
    @Override
    public void start(Stage primaryStage) {
-      filesDirectory = new File(FileUtils.getCurrentWorkingDirectory().concat(DEFAULT_MIDI_DIR));
+      filesDirectory = new File(FileUtils.getCurrentWorkingDirectory().concat(DEFAULT_MIDI_REL_DIR));
 
-      // init and configure behavior of the 'directory chooser' component
       setCurrentDirectory(filesDirectory);
       directoryChooser.setInitialDirectory(filesDirectory);
 
@@ -288,18 +296,27 @@ public class Main extends Application {
    }
 
 
+   /**
+    * Executes the parallel music-scan of the list of notes extracted from the currently selected
+    * midi files
+    * @param notes list of notes to be reduced
+    * @return NoteHeatmap reduction of the notes
+    */
    private static NoteHeatMap parallelNoteScan(List<NoteObservation> notes) {
       MusicScan scan = new MusicScan(notes);
       return scan.getReduction();
 
    }
 
+   /**
+    * A sequential implenetation of the music scan algorithm
+    * @param notes  list of notes to be notes
+    * @return reduction of the
+    */
    private static NoteHeatMap sequentialNoteScan(List<NoteObservation> notes) {
-      //List<Sequence> midiFiles = new ArrayList<>();
       NoteHeatMap noteHeatMap = new NoteHeatMap();
-      for(NoteObservation note : notes){
+      for(NoteObservation note : notes)
          noteHeatMap.accum(note.noteNumber);
-      }
       return noteHeatMap;
    }
 
@@ -313,23 +330,30 @@ public class Main extends Application {
    }
 
    private static void readInMidiFilesFromCurrentlySelectedDirectory() {
-      System.out.println("Scanning Directory.");
+      String fullPath = filesDirectory.getAbsolutePath();
+      System.out.println("Scanning Current Selected Directory [" + fullPath + "");
+
       BenchmarkingTimer.startTimer();
-      searchForMidiFiles();
+      if(fileSearchModeButton.getText().equals(FILE_SEARCH_MODE_PAR))
+         midiFiles = fileSearcher.getFilesInParallel(fullPath);
+      else
+         midiFiles = fileSearcher.getFilesSequentially(fullPath);
+
       System.out.println("File search took " + BenchmarkingTimer.stopTimer() + " ms. Adding them to the list");
       addMidiFilesToFileList();
    }
 
    private static void setCurrentDirectory(File path){
       filesDirectory = path;
-      selectedDirectoryLabel.setText("CURRENT DIR: " + FileUtils.getTruncatedPathForDisplay(filesDirectory, 5));
+      selectedDirectoryLabel.setText("CURRENT DIR: " + FileUtils.getTruncatedDisplayPath(filesDirectory, 5));
       System.out.println("Directory to scan is set to: " + filesDirectory.getAbsolutePath());
    }
 
-   private static void searchForMidiFiles(){
-      FileUtils.DirectoryScanner directoryScanner = new FileUtils.DirectoryScanner();
-      midiFiles.addAll(directoryScanner.getFiles(filesDirectory.getAbsolutePath()));
-   }
+//   private static void searchForMidiFiles(){
+//
+//      midiFiles.addAll(
+//            fileSearcher.getFilesSequentially(filesDirectory.getAbsolutePath()));
+//   }
 
    private static boolean addMidiFilesToFileList(){
       return midiFilesList.getItems().addAll(midiFiles);
